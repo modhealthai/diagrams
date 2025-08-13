@@ -90,14 +90,14 @@
     - Add tests for GitHub Actions workflow validation
     - _Requirements: 3.1, 3.2, 3.3, 4.3_
 
-- [-] 8. Create project documentation and examples
+- [x] 8. Create project documentation and examples
   - [x] 8.1 Write comprehensive README
     - Create README.md with project overview and setup instructions
     - Include examples of how to create new diagrams
     - Add troubleshooting guide and contribution guidelines
     - _Requirements: 5.2, 5.4_
 
-  - [-] 8.2 Add inline code documentation
+  - [x] 8.2 Add inline code documentation
     - Write docstrings for all classes and methods
     - Add type hints throughout the codebase
     - Include usage examples in docstrings

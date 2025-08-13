@@ -3,6 +3,15 @@ Base diagram generator class for creating pystructurizr diagrams.
 
 This module provides the core DiagramGenerator class that handles workspace creation,
 view management, and export functionality for architectural diagrams.
+
+Example:
+    Basic usage of the DiagramGenerator:
+    
+    >>> from diagrams.generator import DiagramGenerator, DiagramConfig
+    >>> config = DiagramConfig(name="My System", description="System architecture")
+    >>> generator = DiagramGenerator(config)
+    >>> workspace = generator.create_workspace()
+    >>> # Add views and export diagrams
 """
 
 from typing import Dict, List, Optional, Any
@@ -15,29 +24,74 @@ from pystructurizr.dsl import Workspace, Model, Person, SoftwareSystem, Containe
 
 @dataclass
 class DiagramConfig:
-    """Configuration for diagram generation."""
+    """
+    Configuration for diagram generation.
+    
+    This class holds all the configuration parameters needed to generate
+    architectural diagrams, including metadata and output format preferences.
+    
+    Attributes:
+        name: The name of the diagram set or project
+        description: A detailed description of what the diagrams represent
+        version: Version string for the diagram set (default: "1.0.0")
+        author: Author or team responsible for the diagrams (default: "Architecture Team")
+        output_formats: List of formats to export (default: ['json', 'plantuml'])
+    
+    Example:
+        >>> config = DiagramConfig(
+        ...     name="E-Commerce System",
+        ...     description="Online shopping platform architecture",
+        ...     version="2.1.0",
+        ...     author="Platform Team",
+        ...     output_formats=['json', 'plantuml', 'png']
+        ... )
+    """
     name: str
     description: str
     version: str = "1.0.0"
     author: str = "Architecture Team"
-    output_formats: List[str] = None
+    output_formats: Optional[List[str]] = None
 
     def __post_init__(self) -> None:
+        """Initialize default output formats if none provided."""
         if self.output_formats is None:
             self.output_formats = ['json', 'plantuml']
 
 
 @dataclass
 class DiagramMetadata:
-    """Metadata for generated diagrams."""
+    """
+    Metadata for generated diagrams.
+    
+    This class stores metadata about individual diagrams including their type,
+    creation time, and associated output files.
+    
+    Attributes:
+        title: Human-readable title of the diagram
+        description: Detailed description of what the diagram shows
+        diagram_type: Type of diagram ('system_context', 'container', 'component')
+        last_updated: Timestamp when the diagram was last modified
+        file_path: Path to the source file or primary output file
+        output_files: Dictionary mapping format names to file paths
+    
+    Example:
+        >>> metadata = DiagramMetadata(
+        ...     title="System Context View",
+        ...     description="High-level view of the system",
+        ...     diagram_type="system_context",
+        ...     last_updated=datetime.now(),
+        ...     file_path="system_context.json"
+        ... )
+    """
     title: str
     description: str
     diagram_type: str
     last_updated: datetime
     file_path: str
-    output_files: Dict[str, str] = None
+    output_files: Optional[Dict[str, str]] = None
 
     def __post_init__(self) -> None:
+        """Initialize empty output files dictionary if none provided."""
         if self.output_files is None:
             self.output_files = {}
 
@@ -47,7 +101,22 @@ class DiagramGenerator:
     Base class for generating architectural diagrams using pystructurizr.
     
     This class provides methods for creating workspaces, adding different types of views,
-    and exporting diagrams to various formats.
+    and exporting diagrams to various formats including JSON and PlantUML.
+    
+    The generator maintains metadata about all created diagrams and provides
+    validation and export capabilities.
+    
+    Attributes:
+        config: Configuration object containing diagram settings
+        workspace: The pystructurizr workspace instance (None until created)
+        _metadata: Internal list of diagram metadata
+    
+    Example:
+        >>> config = DiagramConfig(name="My System", description="System docs")
+        >>> generator = DiagramGenerator(config)
+        >>> workspace = generator.create_workspace()
+        >>> view = generator.add_system_context_view(system, "Context", "Overview")
+        >>> json_output = generator.export_to_json()
     """
 
     def __init__(self, config: DiagramConfig) -> None:
@@ -55,8 +124,15 @@ class DiagramGenerator:
         Initialize the diagram generator with configuration.
         
         Args:
-            config: Configuration object containing diagram settings
+            config: Configuration object containing diagram settings including
+                   name, description, version, author, and output formats
+        
+        Raises:
+            TypeError: If config is not a DiagramConfig instance
         """
+        if not isinstance(config, DiagramConfig):
+            raise TypeError("config must be a DiagramConfig instance")
+            
         self.config = config
         self.workspace: Optional[Workspace] = None
         self._metadata: List[DiagramMetadata] = []
@@ -65,8 +141,17 @@ class DiagramGenerator:
         """
         Create and configure a new pystructurizr workspace.
         
+        This method initializes a new Structurizr workspace that will contain
+        all the architectural models and views. The workspace is configured
+        with the settings from the DiagramConfig.
+        
         Returns:
-            Configured Workspace instance
+            Configured Workspace instance ready for adding models and views
+        
+        Example:
+            >>> generator = DiagramGenerator(config)
+            >>> workspace = generator.create_workspace()
+            >>> # Now you can add models and views to the workspace
         """
         self.workspace = Workspace()
         return self.workspace
@@ -81,14 +166,32 @@ class DiagramGenerator:
         """
         Add a system context view to the workspace.
         
+        A system context view shows a software system and its relationships
+        with users and other software systems. This is typically the highest
+        level view in the C4 model hierarchy.
+        
         Args:
             software_system: The software system to create the view for
-            title: Title of the view
-            description: Description of the view
-            key: Optional key for the view (auto-generated if not provided)
+            title: Human-readable title for the view
+            description: Optional detailed description of what the view shows
+            key: Optional unique identifier for the view. If not provided,
+                 will be auto-generated from the software system name
             
         Returns:
-            Created SystemContextView instance
+            Created SystemContextView instance that can be used to add
+            elements and apply styling
+            
+        Raises:
+            ValueError: If workspace has not been created yet
+            
+        Example:
+            >>> system = model.add_software_system("E-Commerce", "Online store")
+            >>> view = generator.add_system_context_view(
+            ...     system,
+            ...     "E-Commerce System Context",
+            ...     "Shows the e-commerce system and its users"
+            ... )
+            >>> view.include(customer, admin, payment_system)
         """
         if not self.workspace:
             raise ValueError("Workspace must be created before adding views")
@@ -125,14 +228,32 @@ class DiagramGenerator:
         """
         Add a container view to the workspace.
         
+        A container view shows the internal structure of a software system,
+        including the containers (applications, databases, file systems, etc.)
+        that make up the system and their relationships.
+        
         Args:
             software_system: The software system to create the view for
-            title: Title of the view
-            description: Description of the view
-            key: Optional key for the view (auto-generated if not provided)
+            title: Human-readable title for the view
+            description: Optional detailed description of what the view shows
+            key: Optional unique identifier for the view. If not provided,
+                 will be auto-generated from the software system name
             
         Returns:
-            Created ContainerView instance
+            Created ContainerView instance that can be used to add
+            containers and apply styling
+            
+        Raises:
+            ValueError: If workspace has not been created yet
+            
+        Example:
+            >>> system = model.add_software_system("E-Commerce", "Online store")
+            >>> view = generator.add_container_view(
+            ...     system,
+            ...     "E-Commerce Container View",
+            ...     "Shows the internal structure of the e-commerce system"
+            ... )
+            >>> view.include(web_app, api, database)
         """
         if not self.workspace:
             raise ValueError("Workspace must be created before adding views")
@@ -169,14 +290,32 @@ class DiagramGenerator:
         """
         Add a component view to the workspace.
         
+        A component view shows the internal structure of a container,
+        including the components (classes, interfaces, objects, etc.)
+        that make up the container and their relationships.
+        
         Args:
             container: The container to create the view for
-            title: Title of the view
-            description: Description of the view
-            key: Optional key for the view (auto-generated if not provided)
+            title: Human-readable title for the view
+            description: Optional detailed description of what the view shows
+            key: Optional unique identifier for the view. If not provided,
+                 will be auto-generated from the container name
             
         Returns:
-            Created ComponentView instance
+            Created ComponentView instance that can be used to add
+            components and apply styling
+            
+        Raises:
+            ValueError: If workspace has not been created yet
+            
+        Example:
+            >>> api_container = system.add_container("API", "REST API", "Python")
+            >>> view = generator.add_component_view(
+            ...     api_container,
+            ...     "API Component View",
+            ...     "Shows the internal structure of the API container"
+            ... )
+            >>> view.include(controller, service, repository)
         """
         if not self.workspace:
             raise ValueError("Workspace must be created before adding views")
@@ -207,11 +346,26 @@ class DiagramGenerator:
         """
         Export the workspace to structured JSON format with metadata.
         
+        This method creates a comprehensive JSON export that includes the
+        workspace data, model information, views, and metadata about all
+        generated diagrams. The export is structured for easy consumption
+        by static site generators and other tools.
+        
         Returns:
             JSON string representation of the workspace with enhanced metadata
+            including workspace configuration, model data, views, and diagram
+            metadata with timestamps and file paths
             
         Raises:
-            ValueError: If workspace has not been created
+            ValueError: If workspace has not been created or if export fails
+            
+        Example:
+            >>> generator = DiagramGenerator(config)
+            >>> workspace = generator.create_workspace()
+            >>> # ... add views ...
+            >>> json_data = generator.export_to_json()
+            >>> with open("architecture.json", "w") as f:
+            ...     f.write(json_data)
         """
         if not self.workspace:
             raise ValueError("Workspace must be created before export")
@@ -264,8 +418,18 @@ class DiagramGenerator:
         """
         Extract model data from the workspace.
         
+        This method traverses the workspace model to extract information
+        about all architectural elements including people, software systems,
+        containers, components, and their relationships.
+        
         Returns:
-            Dictionary containing model elements and relationships
+            Dictionary containing structured model data with separate
+            collections for each element type and their relationships
+            
+        Note:
+            This is a simplified extraction. In a full implementation,
+            this would traverse the actual workspace model structure
+            to extract all elements and their properties.
         """
         model_data = {
             "people": [],
@@ -285,8 +449,18 @@ class DiagramGenerator:
         """
         Extract views data from the workspace.
         
+        This method traverses the workspace views to extract information
+        about all created views including their configuration, included
+        elements, and styling information.
+        
         Returns:
-            Dictionary containing view definitions and styling
+            Dictionary containing structured view data organized by
+            view type with styling and configuration information
+            
+        Note:
+            This is a simplified extraction. In a full implementation,
+            this would traverse the actual workspace views to extract
+            all view definitions and their properties.
         """
         views_data = {
             "systemContextViews": [],
@@ -304,11 +478,24 @@ class DiagramGenerator:
         """
         Export the workspace to PlantUML format with proper formatting and styling.
         
+        This method generates PlantUML source code for all views in the workspace,
+        including proper C4 model styling, headers, and formatting. The output
+        can be used with PlantUML to generate visual diagrams.
+        
         Returns:
-            PlantUML string representation of all views with styling directives
+            PlantUML string representation of all views with styling directives,
+            C4 model includes, and proper formatting for rendering
             
         Raises:
-            ValueError: If workspace has not been created
+            ValueError: If workspace has not been created or if export fails
+            
+        Example:
+            >>> generator = DiagramGenerator(config)
+            >>> workspace = generator.create_workspace()
+            >>> # ... add views ...
+            >>> plantuml_code = generator.export_to_plantuml()
+            >>> with open("architecture.puml", "w") as f:
+            ...     f.write(plantuml_code)
         """
         if not self.workspace:
             raise ValueError("Workspace must be created before export")
@@ -391,8 +578,13 @@ class DiagramGenerator:
         """
         Generate PlantUML code for system context view.
         
+        This method creates PlantUML source code for system context diagrams
+        using C4 model notation. It includes people, software systems, and
+        their relationships.
+        
         Returns:
-            List of PlantUML lines for system context
+            List of PlantUML lines representing the system context view
+            with proper C4 model syntax and styling
         """
         lines = [
             "' System Context View",
@@ -427,8 +619,13 @@ class DiagramGenerator:
         """
         Generate PlantUML code for container view.
         
+        This method creates PlantUML source code for container diagrams
+        using C4 model notation. It includes containers within a system
+        boundary and their relationships with external elements.
+        
         Returns:
-            List of PlantUML lines for container view
+            List of PlantUML lines representing the container view
+            with proper C4 model syntax and system boundaries
         """
         lines = [
             "' Container View",
@@ -491,8 +688,13 @@ class DiagramGenerator:
         """
         Generate PlantUML code for component view.
         
+        This method creates PlantUML source code for component diagrams
+        using C4 model notation. It includes components within a container
+        boundary and their relationships with external elements.
+        
         Returns:
-            List of PlantUML lines for component view
+            List of PlantUML lines representing the component view
+            with proper C4 model syntax and container boundaries
         """
         lines = [
             "' Component View - Order Service",
@@ -548,8 +750,18 @@ class DiagramGenerator:
         """
         Get metadata for all generated diagrams.
         
+        This method returns a copy of the internal metadata list containing
+        information about all diagrams that have been created in this
+        generator instance.
+        
         Returns:
-            List of DiagramMetadata objects
+            List of DiagramMetadata objects containing title, description,
+            type, timestamps, and file paths for each generated diagram
+            
+        Example:
+            >>> metadata_list = generator.get_metadata()
+            >>> for meta in metadata_list:
+            ...     print(f"{meta.title}: {meta.diagram_type}")
         """
         return self._metadata.copy()
     
@@ -557,14 +769,24 @@ class DiagramGenerator:
         """
         Validate the structure of exported JSON data.
         
+        This method performs comprehensive validation of JSON export data
+        to ensure it contains all required fields and has the correct
+        structure for consumption by other tools.
+        
         Args:
-            export_data: JSON string to validate
+            export_data: JSON string to validate against expected schema
             
         Returns:
-            True if data structure is valid
+            True if data structure is valid and contains all required fields
             
         Raises:
-            ValueError: If data structure is invalid
+            ValueError: If data structure is invalid, missing required fields,
+                       or contains invalid values
+            
+        Example:
+            >>> json_data = generator.export_to_json()
+            >>> is_valid = generator.validate_export_data(json_data)
+            >>> print(f"Export data is valid: {is_valid}")
         """
         try:
             data = json.loads(export_data)
@@ -610,14 +832,25 @@ class DiagramGenerator:
         """
         Validate the structure of exported PlantUML data.
         
+        This method validates PlantUML source code to ensure it has the
+        correct structure and required directives for successful rendering.
+        It checks for proper start/end markers, title directives, and
+        sufficient content.
+        
         Args:
-            plantuml_data: PlantUML string to validate
+            plantuml_data: PlantUML string to validate for syntax and structure
             
         Returns:
-            True if PlantUML structure is valid
+            True if PlantUML structure is valid and can be rendered
             
         Raises:
-            ValueError: If PlantUML structure is invalid
+            ValueError: If PlantUML structure is invalid, missing required
+                       directives, or has insufficient content
+            
+        Example:
+            >>> plantuml_code = generator.export_to_plantuml()
+            >>> is_valid = generator.validate_plantuml_output(plantuml_code)
+            >>> print(f"PlantUML code is valid: {is_valid}")
         """
         if not plantuml_data.strip():
             raise ValueError("PlantUML output is empty")

@@ -2,7 +2,23 @@
 Static site generator for pystructurizr diagrams.
 
 This module generates HTML pages from diagram metadata and templates,
-creating a complete static site for GitHub Pages deployment.
+creating a complete static site for GitHub Pages deployment. It provides
+a comprehensive site generation system with navigation, responsive design,
+and automatic content organization.
+
+The generator processes diagram metadata and creates:
+- Homepage with featured and recent diagrams
+- Diagram listing pages with categorization
+- Individual diagram pages with related content
+- Navigation structure and sitemap
+
+Example:
+    Basic usage of the site generator:
+    
+    >>> from site_generator import SiteGenerator, SiteConfig
+    >>> config = SiteConfig(title="My Architecture", base_url="https://example.com")
+    >>> generator = SiteGenerator(config=config)
+    >>> generator.generate_site()
 """
 
 import os
@@ -19,14 +35,35 @@ from diagrams.generator import DiagramMetadata
 
 @dataclass
 class SiteConfig:
-    """Configuration for static site generation."""
+    """
+    Configuration for static site generation.
+    
+    This class holds all configuration parameters needed to generate
+    the static site including site metadata, URLs, theming, and navigation.
+    
+    Attributes:
+        title: The title of the website
+        description: A description of the site for SEO and display
+        base_url: Base URL for the site (used for sitemap and absolute links)
+        theme: Theme name for styling (currently supports "default")
+        navigation: List of navigation items with name and url
+    
+    Example:
+        >>> config = SiteConfig(
+        ...     title="My Architecture Documentation",
+        ...     description="Comprehensive system architecture diagrams",
+        ...     base_url="https://mycompany.github.io/architecture",
+        ...     theme="corporate"
+        ... )
+    """
     title: str = "Architecture Diagrams"
     description: str = "Explore our system architecture through interactive diagrams"
     base_url: str = ""
     theme: str = "default"
-    navigation: List[Dict[str, str]] = None
+    navigation: Optional[List[Dict[str, str]]] = None
 
     def __post_init__(self) -> None:
+        """Initialize default navigation if none provided."""
         if self.navigation is None:
             self.navigation = [
                 {"name": "Home", "url": "/"},
@@ -36,7 +73,28 @@ class SiteConfig:
 
 @dataclass
 class SiteStats:
-    """Statistics about the generated site."""
+    """
+    Statistics about the generated site.
+    
+    This class holds statistical information about the generated site
+    including counts of different diagram types and last update times.
+    
+    Attributes:
+        total_diagrams: Total number of diagrams in the site
+        system_contexts: Number of system context diagrams
+        containers: Number of container diagrams
+        components: Number of component diagrams
+        last_updated: Timestamp of the most recently updated diagram
+    
+    Example:
+        >>> stats = SiteStats(
+        ...     total_diagrams=15,
+        ...     system_contexts=3,
+        ...     containers=7,
+        ...     components=5,
+        ...     last_updated=datetime.now()
+        ... )
+    """
     total_diagrams: int = 0
     system_contexts: int = 0
     containers: int = 0
@@ -54,6 +112,29 @@ class SiteGenerator:
     - Creating navigation structure
     - Generating individual diagram pages
     - Creating index and listing pages
+    - Copying static assets
+    - Generating sitemaps
+    
+    The generator uses Jinja2 templates for flexible HTML generation and
+    supports responsive design, SEO optimization, and accessibility features.
+    
+    Attributes:
+        templates_dir: Path to directory containing Jinja2 templates
+        output_dir: Path to directory where generated HTML will be written
+        diagrams_dir: Path to directory containing diagram metadata and outputs
+        config: Site configuration object
+        jinja_env: Jinja2 environment for template processing
+        diagrams: List of loaded diagram metadata
+        stats: Site statistics
+    
+    Example:
+        >>> config = SiteConfig(title="My Docs", base_url="https://example.com")
+        >>> generator = SiteGenerator(
+        ...     templates_dir="templates",
+        ...     output_dir="site",
+        ...     config=config
+        ... )
+        >>> generator.generate_site()
     """
 
     def __init__(
@@ -66,11 +147,23 @@ class SiteGenerator:
         """
         Initialize the site generator.
         
+        Sets up the site generator with the specified directories and configuration.
+        Initializes the Jinja2 environment with appropriate settings for HTML
+        generation and sets up custom filters.
+        
         Args:
-            templates_dir: Directory containing Jinja2 templates
+            templates_dir: Directory containing Jinja2 templates (base.html, index.html, etc.)
             output_dir: Directory where generated HTML will be written
-            diagrams_dir: Directory containing diagram metadata and outputs
-            config: Site configuration object
+            diagrams_dir: Directory containing diagram metadata and output files
+            config: Site configuration object. If None, default config will be used
+            
+        Example:
+            >>> generator = SiteGenerator(
+            ...     templates_dir="my_templates",
+            ...     output_dir="public",
+            ...     diagrams_dir="diagrams",
+            ...     config=SiteConfig(title="My Architecture")
+            ... )
         """
         self.templates_dir = Path(templates_dir)
         self.output_dir = Path(output_dir)
