@@ -716,18 +716,262 @@ def validate_diagram_elements(elements: List[Dict[str, Any]]) -> bool:
         >>> is_valid = validate_diagram_elements(elements)
         >>> print(f"Elements are valid: {is_valid}")
     """
+    if not elements:
+        raise ValueError("Elements list cannot be empty")
+    
     required_fields = ['type', 'name']
     valid_types = ['person', 'system', 'container', 'component']
     
     for i, element in enumerate(elements):
+        if not isinstance(element, dict):
+            raise ValueError(f"Element {i}: Must be a dictionary")
+        
         for field in required_fields:
             if field not in element:
                 raise ValueError(f"Element {i}: Missing required field '{field}'")
+            
+            if not element[field] or not str(element[field]).strip():
+                raise ValueError(f"Element {i}: Field '{field}' cannot be empty")
         
         if element['type'] not in valid_types:
-            raise ValueError(f"Element {i}: Invalid type '{element['type']}'")
+            raise ValueError(f"Element {i}: Invalid type '{element['type']}'. Valid types: {valid_types}")
+        
+        # Validate optional fields
+        if 'description' in element and element['description'] is not None:
+            if not isinstance(element['description'], str):
+                raise ValueError(f"Element {i}: Description must be a string")
     
     return True
+
+
+def validate_diagram_relationships(
+    relationships: List[Dict[str, Any]], 
+    element_names: List[str]
+) -> bool:
+    """
+    Validate diagram relationship definitions.
+    
+    This function validates a list of relationship definitions to ensure they
+    reference valid elements and have proper structure.
+    
+    Args:
+        relationships: List of relationship definition dictionaries
+        element_names: List of valid element names that can be referenced
+        
+    Returns:
+        True if all relationships are valid
+        
+    Raises:
+        ValueError: If any relationship is invalid or references non-existent elements
+        
+    Example:
+        >>> relationships = [
+        ...     {"source": "User", "destination": "System", "description": "Uses"}
+        ... ]
+        >>> element_names = ["User", "System"]
+        >>> is_valid = validate_diagram_relationships(relationships, element_names)
+    """
+    if not relationships:
+        return True  # Empty relationships list is valid
+    
+    required_fields = ['source', 'destination', 'description']
+    
+    for i, relationship in enumerate(relationships):
+        if not isinstance(relationship, dict):
+            raise ValueError(f"Relationship {i}: Must be a dictionary")
+        
+        for field in required_fields:
+            if field not in relationship:
+                raise ValueError(f"Relationship {i}: Missing required field '{field}'")
+            
+            if not relationship[field] or not str(relationship[field]).strip():
+                raise ValueError(f"Relationship {i}: Field '{field}' cannot be empty")
+        
+        # Validate that source and destination reference valid elements
+        source = relationship['source']
+        destination = relationship['destination']
+        
+        if source not in element_names:
+            raise ValueError(f"Relationship {i}: Source '{source}' not found in elements")
+        
+        if destination not in element_names:
+            raise ValueError(f"Relationship {i}: Destination '{destination}' not found in elements")
+        
+        if source == destination:
+            raise ValueError(f"Relationship {i}: Source and destination cannot be the same element")
+        
+        # Validate optional fields
+        if 'technology' in relationship and relationship['technology'] is not None:
+            if not isinstance(relationship['technology'], str):
+                raise ValueError(f"Relationship {i}: Technology must be a string")
+    
+    return True
+
+
+def validate_diagram_definition(diagram_def: Dict[str, Any]) -> bool:
+    """
+    Validate a complete diagram definition including elements and relationships.
+    
+    This function performs comprehensive validation of a diagram definition
+    including elements, relationships, and overall structure.
+    
+    Args:
+        diagram_def: Dictionary containing complete diagram definition
+        
+    Returns:
+        True if the diagram definition is valid
+        
+    Raises:
+        ValueError: If the diagram definition is invalid
+        
+    Example:
+        >>> diagram_def = {
+        ...     "name": "System Context",
+        ...     "description": "High-level view",
+        ...     "elements": [{"type": "person", "name": "User"}],
+        ...     "relationships": []
+        ... }
+        >>> is_valid = validate_diagram_definition(diagram_def)
+    """
+    if not isinstance(diagram_def, dict):
+        raise ValueError("Diagram definition must be a dictionary")
+    
+    # Validate required top-level fields
+    required_fields = ['name', 'description', 'elements']
+    for field in required_fields:
+        if field not in diagram_def:
+            raise ValueError(f"Missing required field: {field}")
+        
+        if not diagram_def[field] or (isinstance(diagram_def[field], str) and not diagram_def[field].strip()):
+            raise ValueError(f"Field '{field}' cannot be empty")
+    
+    # Validate elements
+    elements = diagram_def['elements']
+    if not isinstance(elements, list):
+        raise ValueError("Elements must be a list")
+    
+    validate_diagram_elements(elements)
+    
+    # Extract element names for relationship validation
+    element_names = [element['name'] for element in elements]
+    
+    # Validate relationships if present
+    if 'relationships' in diagram_def:
+        relationships = diagram_def['relationships']
+        if not isinstance(relationships, list):
+            raise ValueError("Relationships must be a list")
+        
+        validate_diagram_relationships(relationships, element_names)
+    
+    # Validate optional fields
+    if 'type' in diagram_def:
+        valid_diagram_types = ['system_context', 'container', 'component']
+        if diagram_def['type'] not in valid_diagram_types:
+            raise ValueError(f"Invalid diagram type. Valid types: {valid_diagram_types}")
+    
+    return True
+
+
+class DiagramValidator:
+    """
+    Comprehensive diagram validation with detailed error reporting.
+    
+    This class provides advanced validation capabilities for diagrams
+    including structural validation, semantic checks, and best practice
+    recommendations.
+    """
+    
+    def __init__(self):
+        """Initialize the diagram validator."""
+        self.errors: List[str] = []
+        self.warnings: List[str] = []
+    
+    def validate_diagram_structure(self, diagram_def: Dict[str, Any]) -> bool:
+        """
+        Validate diagram structure and collect detailed error information.
+        
+        Args:
+            diagram_def: Dictionary containing diagram definition
+            
+        Returns:
+            True if validation passes, False otherwise
+        """
+        self.errors.clear()
+        self.warnings.clear()
+        
+        try:
+            validate_diagram_definition(diagram_def)
+            
+            # Additional structural checks
+            self._check_diagram_completeness(diagram_def)
+            self._check_best_practices(diagram_def)
+            
+            return len(self.errors) == 0
+            
+        except ValueError as e:
+            self.errors.append(str(e))
+            return False
+    
+    def _check_diagram_completeness(self, diagram_def: Dict[str, Any]) -> None:
+        """Check for diagram completeness and common issues."""
+        elements = diagram_def.get('elements', [])
+        relationships = diagram_def.get('relationships', [])
+        
+        # Check for isolated elements (no relationships)
+        if relationships:
+            element_names = {element['name'] for element in elements}
+            connected_elements = set()
+            
+            for rel in relationships:
+                connected_elements.add(rel['source'])
+                connected_elements.add(rel['destination'])
+            
+            isolated_elements = element_names - connected_elements
+            if isolated_elements:
+                self.warnings.append(f"Isolated elements (no relationships): {', '.join(isolated_elements)}")
+        
+        # Check for missing descriptions
+        elements_without_desc = [
+            elem['name'] for elem in elements 
+            if not elem.get('description', '').strip()
+        ]
+        if elements_without_desc:
+            self.warnings.append(f"Elements missing descriptions: {', '.join(elements_without_desc)}")
+    
+    def _check_best_practices(self, diagram_def: Dict[str, Any]) -> None:
+        """Check for best practice violations."""
+        elements = diagram_def.get('elements', [])
+        
+        # Check for reasonable number of elements
+        if len(elements) > 20:
+            self.warnings.append(f"Large number of elements ({len(elements)}). Consider breaking into multiple diagrams.")
+        
+        # Check for consistent naming
+        element_names = [elem['name'] for elem in elements]
+        if len(set(element_names)) != len(element_names):
+            self.errors.append("Duplicate element names found")
+        
+        # Check for proper element distribution
+        element_types = [elem['type'] for elem in elements]
+        type_counts = {t: element_types.count(t) for t in set(element_types)}
+        
+        if 'person' not in type_counts:
+            self.warnings.append("No people/actors defined. Consider adding users or stakeholders.")
+    
+    def get_validation_report(self) -> Dict[str, Any]:
+        """
+        Get a detailed validation report.
+        
+        Returns:
+            Dictionary containing validation results, errors, and warnings
+        """
+        return {
+            "valid": len(self.errors) == 0,
+            "errors": self.errors.copy(),
+            "warnings": self.warnings.copy(),
+            "error_count": len(self.errors),
+            "warning_count": len(self.warnings)
+        }
 
 
 def create_elements_from_config(

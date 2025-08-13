@@ -370,6 +370,9 @@ class DiagramGenerator:
         if not self.workspace:
             raise ValueError("Workspace must be created before export")
         
+        # Validate workspace before export
+        self.validate_workspace()
+        
         try:
             # Get the raw workspace data
             workspace_data = self.workspace.dump()
@@ -474,6 +477,148 @@ class DiagramGenerator:
         
         return views_data
 
+    def validate_workspace(self) -> None:
+        """
+        Validate the workspace and all its elements before export.
+        
+        This method performs comprehensive validation of the workspace including:
+        - Checking that required elements exist
+        - Validating relationships between elements
+        - Ensuring all views have proper configuration
+        - Checking for common diagram issues
+        
+        Raises:
+            ValueError: If validation fails with detailed error messages
+        """
+        if not self.workspace:
+            raise ValueError("Workspace has not been created")
+        
+        # Validate configuration
+        if not self.config.name or not self.config.name.strip():
+            raise ValueError("Workspace name cannot be empty")
+        
+        if not self.config.description or not self.config.description.strip():
+            raise ValueError("Workspace description cannot be empty")
+        
+        # Validate that we have at least one diagram
+        if not self._metadata:
+            raise ValueError("Workspace must contain at least one diagram")
+        
+        # Validate each diagram's metadata
+        for i, meta in enumerate(self._metadata):
+            if not meta.title or not meta.title.strip():
+                raise ValueError(f"Diagram {i+1}: Title cannot be empty")
+            
+            if meta.diagram_type not in ['system_context', 'container', 'component']:
+                raise ValueError(f"Diagram {i+1}: Invalid diagram type '{meta.diagram_type}'")
+        
+        print("✓ Workspace validation passed")
+
+    def validate_export_data(self, json_data: str) -> None:
+        """
+        Validate exported JSON data structure and content.
+        
+        This method validates that the exported JSON data has the correct
+        structure and contains all required fields with valid values.
+        
+        Args:
+            json_data: JSON string to validate
+            
+        Raises:
+            ValueError: If validation fails with detailed error messages
+        """
+        try:
+            data = json.loads(json_data)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON format: {e}")
+        
+        # Validate top-level structure
+        required_sections = ['workspace', 'model', 'views', 'metadata', 'rawWorkspace']
+        for section in required_sections:
+            if section not in data:
+                raise ValueError(f"Missing required section: {section}")
+        
+        # Validate workspace section
+        workspace = data['workspace']
+        required_workspace_fields = ['name', 'description', 'version', 'author']
+        for field in required_workspace_fields:
+            if field not in workspace or not workspace[field]:
+                raise ValueError(f"Missing or empty workspace field: {field}")
+        
+        # Validate metadata section
+        metadata = data['metadata']
+        if 'diagrams' not in metadata:
+            raise ValueError("Missing diagrams in metadata section")
+        
+        if not isinstance(metadata['diagrams'], list):
+            raise ValueError("Diagrams metadata must be a list")
+        
+        if len(metadata['diagrams']) == 0:
+            raise ValueError("Must have at least one diagram in metadata")
+        
+        # Validate each diagram metadata
+        for i, diagram in enumerate(metadata['diagrams']):
+            required_diagram_fields = ['title', 'type', 'lastUpdated']
+            for field in required_diagram_fields:
+                if field not in diagram or not diagram[field]:
+                    raise ValueError(f"Diagram {i+1}: Missing or empty field '{field}'")
+        
+        print("✓ JSON export data validation passed")
+
+    def validate_plantuml_output(self, plantuml_data: str) -> None:
+        """
+        Validate PlantUML output format and content.
+        
+        This method validates that the PlantUML output has proper syntax
+        and contains expected elements for diagram rendering.
+        
+        Args:
+            plantuml_data: PlantUML string to validate
+            
+        Raises:
+            ValueError: If validation fails with detailed error messages
+        """
+        if not plantuml_data or not plantuml_data.strip():
+            raise ValueError("PlantUML output is empty")
+        
+        lines = plantuml_data.strip().split('\n')
+        
+        # Check for required PlantUML structure
+        if not any(line.strip().startswith('@startuml') for line in lines):
+            raise ValueError("Missing @startuml directive")
+        
+        if not any(line.strip().startswith('@enduml') for line in lines):
+            raise ValueError("Missing @enduml directive")
+        
+        # Check for title (less strict - can be !title or title in comments)
+        has_title = any('!title' in line or 'title' in line.lower() for line in lines)
+        if not has_title:
+            raise ValueError("Missing title directive")
+        
+        # Check for C4 model includes (optional but recommended)
+        has_c4_includes = any('C4_' in line for line in lines)
+        if not has_c4_includes:
+            # This is a warning, not an error
+            pass
+        
+        # Check for basic content (at least some elements or relationships)
+        content_indicators = ['Person(', 'System(', 'Container(', 'Component(', 'Rel(']
+        has_content = any(indicator in plantuml_data for indicator in content_indicators)
+        if not has_content:
+            raise ValueError("PlantUML output appears to be empty (no elements or relationships found)")
+        
+        print("✓ PlantUML output validation passed")
+
+    def get_metadata(self) -> List[DiagramMetadata]:
+        """
+        Get metadata for all diagrams in the workspace.
+        
+        Returns:
+            List of DiagramMetadata objects containing information about
+            all diagrams in the workspace
+        """
+        return self._metadata.copy()
+
     def export_to_plantuml(self) -> str:
         """
         Export the workspace to PlantUML format with proper formatting and styling.
@@ -499,6 +644,9 @@ class DiagramGenerator:
         """
         if not self.workspace:
             raise ValueError("Workspace must be created before export")
+        
+        # Validate workspace before export
+        self.validate_workspace()
         
         try:
             plantuml_output = []

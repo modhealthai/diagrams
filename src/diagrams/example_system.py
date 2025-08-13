@@ -602,7 +602,7 @@ def create_example_diagrams() -> ECommerceSystemDiagrams:
 
 def export_diagrams(diagrams: ECommerceSystemDiagrams, output_dir: str = "docs") -> None:
     """
-    Export diagrams to JSON and PlantUML formats with enhanced metadata.
+    Export diagrams to JSON and PlantUML formats with enhanced metadata and validation.
     
     Args:
         diagrams: ECommerceSystemDiagrams instance
