@@ -1,0 +1,150 @@
+name: Render Architecture Diagrams
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  render-diagrams:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install uv
+      uses: astral-sh/setup-uv@v2
+      with:
+        version: "latest"
+        
+    - name: Install dependencies
+      run: |
+        uv sync
+        
+    - name: Verify installation
+      run: |
+        uv run python --version
+        uv run python -c "import structurizr; print('pystructurizr installed successfully')"
+        
+    - name: Create output directories
+      run: |
+        mkdir -p docs/diagrams
+        mkdir -p docs/plantuml
+        mkdir -p docs/images
+        
+    - name: Generate diagram definitions
+      run: |
+        echo "Generating diagrams..."
+        uv run python src/diagrams/example_system.py
+        
+    - name: Set up PlantUML
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y default-jre
+        wget -O plantuml.jar https://github.com/plantuml/plantuml/releases/download/v1.2023.12/plantuml-1.2023.12.jar
+        
+    - name: Render PlantUML diagrams to images
+      run: |
+        echo "Rendering PlantUML diagrams..."
+        if [ -d "docs/plantuml" ] && [ "$(ls -A docs/plantuml)" ]; then
+          for puml_file in docs/plantuml/*.puml; do
+            if [ -f "$puml_file" ]; then
+              echo "Rendering $puml_file"
+              java -jar plantuml.jar -tpng -o ../images "$puml_file"
+              java -jar plantuml.jar -tsvg -o ../images "$puml_file"
+            fi
+          done
+        else
+          echo "No PlantUML files found to render"
+        fi
+        
+    - name: List generated files
+      run: |
+        echo "Generated files:"
+        find docs -type f -name "*.json" -o -name "*.puml" -o -name "*.png" -o -name "*.svg" | sort
+        
+    - name: Generate static HTML pages
+      run: |
+        echo "Generating static site..."
+        # Create a basic index.html for now
+        cat > docs/index.html << 'EOF'
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Architecture Diagrams</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 40px; }
+                h1 { color: #333; }
+                .diagram-list { list-style-type: none; padding: 0; }
+                .diagram-item { margin: 10px 0; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+                .diagram-item img { max-width: 100%; height: auto; }
+            </style>
+        </head>
+        <body>
+            <h1>Architecture Diagrams</h1>
+            <div class="diagram-list">
+        EOF
+        
+        # Add links to generated images
+        if [ -d "docs/images" ] && [ "$(ls -A docs/images)" ]; then
+          for img_file in docs/images/*.png; do
+            if [ -f "$img_file" ]; then
+              filename=$(basename "$img_file")
+              echo "                <div class=\"diagram-item\">" >> docs/index.html
+              echo "                    <h3>$filename</h3>" >> docs/index.html
+              echo "                    <img src=\"images/$filename\" alt=\"$filename\">" >> docs/index.html
+              echo "                </div>" >> docs/index.html
+            fi
+          done
+        else
+          echo "                <p>No diagrams available yet.</p>" >> docs/index.html
+        fi
+        
+        cat >> docs/index.html << 'EOF'
+            </div>
+        </body>
+        </html>
+        EOF
+        
+    - name: Upload Pages artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: ./docs
+        
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: render-diagrams
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
+      
+    - name: Notify deployment status
+      if: failure()
+      run: |
+        echo "::error::GitHub Pages deployment failed"
+        exit 1
