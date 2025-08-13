@@ -118,11 +118,12 @@ class ECommerceSystemDiagrams:
         # Define relationships
         self._add_system_context_relationships()
         
-        # Create the system context view
-        system_context_view = self.workspace.SystemContextView(
+        # Create the system context view using the generator method
+        system_context_view = self.generator.add_system_context_view(
             self.systems["ecommerce"],
-            "SystemContext",
-            "E-Commerce System - System Context"
+            "E-Commerce System - System Context",
+            "Shows the e-commerce platform and its interactions with users and external systems",
+            "SystemContext"
         )
         
         # Add all people and systems to the view
@@ -267,11 +268,12 @@ class ECommerceSystemDiagrams:
         # Define container relationships
         self._add_container_relationships()
         
-        # Create the container view
-        container_view = self.workspace.ContainerView(
+        # Create the container view using the generator method
+        container_view = self.generator.add_container_view(
             ecommerce_system,
-            "ContainerView",
-            "E-Commerce System - Container View"
+            "E-Commerce System - Container View",
+            "Shows the internal structure of the e-commerce platform with different containers/services",
+            "ContainerView"
         )
         
         # Add people and external systems to show context
@@ -346,11 +348,12 @@ class ECommerceSystemDiagrams:
         # Define component relationships
         self._add_component_relationships()
         
-        # Create the component view
-        component_view = self.workspace.ComponentView(
+        # Create the component view using the generator method
+        component_view = self.generator.add_component_view(
             order_service,
-            "ComponentView",
-            "Order Service - Component View"
+            "Order Service - Component View",
+            "Shows the detailed internal structure of the Order Service container",
+            "ComponentView"
         )
         
         # Add relevant external elements to show context
@@ -599,7 +602,7 @@ def create_example_diagrams() -> ECommerceSystemDiagrams:
 
 def export_diagrams(diagrams: ECommerceSystemDiagrams, output_dir: str = "docs") -> None:
     """
-    Export diagrams to JSON and PlantUML formats.
+    Export diagrams to JSON and PlantUML formats with enhanced metadata.
     
     Args:
         diagrams: ECommerceSystemDiagrams instance
@@ -614,39 +617,66 @@ def export_diagrams(diagrams: ECommerceSystemDiagrams, output_dir: str = "docs")
     
     print(f"Exporting diagrams to {output_dir}/...")
     
-    # Export to JSON
-    json_output = diagrams.generator.export_to_json()
-    json_file = output_path / "ecommerce_architecture.json"
-    with open(json_file, 'w', encoding='utf-8') as f:
-        f.write(json_output)
-    print(f"✓ JSON export saved to {json_file}")
-    
-    # Export to PlantUML
-    plantuml_output = diagrams.generator.export_to_plantuml()
-    plantuml_file = output_path / "ecommerce_architecture.puml"
-    with open(plantuml_file, 'w', encoding='utf-8') as f:
-        f.write(plantuml_output)
-    print(f"✓ PlantUML export saved to {plantuml_file}")
-    
-    # Export metadata
-    metadata = diagrams.generator.get_metadata()
-    metadata_file = output_path / "diagram_metadata.json"
-    
-    import json
-    metadata_dict = [
-        {
-            "title": meta.title,
-            "description": meta.description,
-            "type": meta.diagram_type,
-            "lastUpdated": meta.last_updated.isoformat(),
-            "filePath": meta.file_path
+    try:
+        # Export to JSON with enhanced metadata
+        json_output = diagrams.generator.export_to_json()
+        
+        # Validate the exported data
+        diagrams.generator.validate_export_data(json_output)
+        print("✓ JSON export data validation passed")
+        
+        # Save JSON export
+        json_file = output_path / "ecommerce_architecture.json"
+        with open(json_file, 'w', encoding='utf-8') as f:
+            f.write(json_output)
+        print(f"✓ Enhanced JSON export saved to {json_file}")
+        
+        # Export to PlantUML with validation
+        plantuml_output = diagrams.generator.export_to_plantuml()
+        
+        # Validate the PlantUML output
+        diagrams.generator.validate_plantuml_output(plantuml_output)
+        print("✓ PlantUML export data validation passed")
+        
+        plantuml_file = output_path / "ecommerce_architecture.puml"
+        with open(plantuml_file, 'w', encoding='utf-8') as f:
+            f.write(plantuml_output)
+        print(f"✓ Enhanced PlantUML export saved to {plantuml_file}")
+        
+        # Export enhanced metadata
+        metadata = diagrams.generator.get_metadata()
+        metadata_file = output_path / "diagram_metadata.json"
+        
+        import json
+        enhanced_metadata = {
+            "diagrams": [
+                {
+                    "title": meta.title,
+                    "description": meta.description,
+                    "type": meta.diagram_type,
+                    "lastUpdated": meta.last_updated.isoformat(),
+                    "filePath": meta.file_path,
+                    "outputFiles": meta.output_files
+                }
+                for meta in metadata
+            ],
+            "workspace": {
+                "name": diagrams.config.name,
+                "description": diagrams.config.description,
+                "version": diagrams.config.version,
+                "author": diagrams.config.author
+            },
+            "exportedAt": datetime.now().isoformat(),
+            "totalDiagrams": len(metadata)
         }
-        for meta in metadata
-    ]
-    
-    with open(metadata_file, 'w', encoding='utf-8') as f:
-        json.dump(metadata_dict, f, indent=2)
-    print(f"✓ Metadata saved to {metadata_file}")
+        
+        with open(metadata_file, 'w', encoding='utf-8') as f:
+            json.dump(enhanced_metadata, f, indent=2, ensure_ascii=False)
+        print(f"✓ Enhanced metadata saved to {metadata_file}")
+        
+    except Exception as e:
+        print(f"✗ Export failed: {str(e)}")
+        raise
 
 
 if __name__ == "__main__":
