@@ -41,7 +41,7 @@ jobs:
     - name: Verify installation
       run: |
         uv run python --version
-        uv run python -c "import structurizr; print('pystructurizr installed successfully')"
+        uv run python -c "import pystructurizr; print('pystructurizr installed successfully')"
         
     - name: Create output directories
       run: |
