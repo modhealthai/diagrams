@@ -19,6 +19,8 @@ import json
 from datetime import datetime
 from dataclasses import dataclass
 
+from .cache import DiagramCache, ImageOptimizer
+
 from pystructurizr.dsl import Workspace, Model, Person, SoftwareSystem, Container, Component, View
 
 
@@ -119,13 +121,14 @@ class DiagramGenerator:
         >>> json_output = generator.export_to_json()
     """
 
-    def __init__(self, config: DiagramConfig) -> None:
+    def __init__(self, config: DiagramConfig, enable_cache: bool = True) -> None:
         """
         Initialize the diagram generator with configuration.
         
         Args:
             config: Configuration object containing diagram settings including
                    name, description, version, author, and output formats
+            enable_cache: Whether to enable caching for performance optimization
         
         Raises:
             TypeError: If config is not a DiagramConfig instance
@@ -136,6 +139,9 @@ class DiagramGenerator:
         self.config = config
         self.workspace: Optional[Workspace] = None
         self._metadata: List[DiagramMetadata] = []
+        self.enable_cache = enable_cache
+        self.cache = DiagramCache() if enable_cache else None
+        self.image_optimizer = ImageOptimizer()
 
     def create_workspace(self) -> Workspace:
         """
@@ -1036,3 +1042,86 @@ class DiagramGenerator:
             raise ValueError("PlantUML output appears to have insufficient content")
         
         return True
+    
+    def is_diagram_cached(self, diagram_key: str, content: Optional[str] = None) -> bool:
+        """
+        Check if a diagram is cached and up-to-date.
+        
+        Args:
+            diagram_key: Unique key for the diagram
+            content: Optional content to check for changes
+            
+        Returns:
+            True if diagram is cached and current, False otherwise
+        """
+        if not self.enable_cache or not self.cache:
+            return False
+        
+        return self.cache.is_cached(diagram_key, content)
+    
+    def get_cached_outputs(self, diagram_key: str) -> Optional[Dict[str, str]]:
+        """
+        Get cached output files for a diagram.
+        
+        Args:
+            diagram_key: Unique key for the diagram
+            
+        Returns:
+            Dictionary of cached output files or None if not cached
+        """
+        if not self.enable_cache or not self.cache:
+            return None
+        
+        return self.cache.get_cached_outputs(diagram_key)
+    
+    def cache_diagram_outputs(
+        self,
+        diagram_key: str,
+        output_files: Dict[str, str],
+        content: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """
+        Cache diagram generation outputs.
+        
+        Args:
+            diagram_key: Unique key for the diagram
+            output_files: Dictionary of generated output files
+            content: Optional content that was used to generate the diagram
+            metadata: Additional metadata to cache
+        """
+        if not self.enable_cache or not self.cache:
+            return
+        
+        self.cache.cache_diagram(diagram_key, content, output_files, metadata)
+    
+    def optimize_output_images(self, output_dir: str) -> List[str]:
+        """
+        Optimize all generated images for web display.
+        
+        Args:
+            output_dir: Directory containing generated images
+            
+        Returns:
+            List of optimized image file paths
+        """
+        return self.image_optimizer.optimize_directory(output_dir)
+    
+    def clear_cache(self) -> None:
+        """Clear all cached diagram data."""
+        if self.cache:
+            self.cache.clear()
+    
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """
+        Get cache statistics.
+        
+        Returns:
+            Dictionary with cache statistics
+        """
+        if not self.cache:
+            return {"cache_enabled": False}
+        
+        stats = self.cache.get_cache_stats()
+        stats["cache_enabled"] = True
+        return stats

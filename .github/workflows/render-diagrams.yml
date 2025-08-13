@@ -59,6 +59,16 @@ jobs:
       with:
         version: "latest"
       continue-on-error: false
+      
+    - name: Cache uv dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/uv
+          .venv
+        key: ${{ runner.os }}-uv-${{ hashFiles('**/uv.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-uv-
         
     - name: Install dependencies with retry logic
       run: |
@@ -216,73 +226,94 @@ jobs:
         
         echo "::endgroup::"
         
+    - name: Cache PlantUML and build artifacts
+      uses: actions/cache@v4
+      with:
+        path: |
+          plantuml.jar
+          .cache/
+          docs/images/
+        key: ${{ runner.os }}-plantuml-${{ env.PLANTUML_VERSION }}-${{ hashFiles('src/**/*.py') }}
+        restore-keys: |
+          ${{ runner.os }}-plantuml-${{ env.PLANTUML_VERSION }}-
+          ${{ runner.os }}-plantuml-
+        
     - name: Set up PlantUML with error handling
       run: |
         echo "::group::Setting up PlantUML"
         echo "$(date -u '+%Y-%m-%d %H:%M:%S UTC') - Setting up PlantUML" >> workflow-logs/execution.log
         
-        # Update package list with retry
-        echo "Updating package list..."
-        max_attempts=3
-        attempt=1
-        
-        while [ $attempt -le $max_attempts ]; do
-          if sudo apt-get update; then
-            echo "✓ Package list updated successfully"
-            break
-          else
-            echo "::warning::Package update failed on attempt $attempt"
-            if [ $attempt -eq $max_attempts ]; then
-              echo "::error::Failed to update package list after $max_attempts attempts"
-              exit 1
-            fi
-            sleep 5
-            attempt=$((attempt + 1))
-          fi
-        done
-        
-        # Install Java Runtime Environment
-        echo "Installing Java Runtime Environment..."
-        if sudo apt-get install -y default-jre; then
-          echo "✓ Java installed successfully"
-          echo "$(date -u '+%Y-%m-%d %H:%M:%S UTC') - Java installed successfully" >> workflow-logs/execution.log
-          java -version
+        # Check if PlantUML is already cached
+        if [ -f "plantuml.jar" ] && [ -s "plantuml.jar" ]; then
+          echo "✓ PlantUML found in cache"
+          echo "$(date -u '+%Y-%m-%d %H:%M:%S UTC') - PlantUML found in cache" >> workflow-logs/execution.log
+          ls -lh plantuml.jar
         else
-          echo "::error::Failed to install Java"
-          echo "$(date -u '+%Y-%m-%d %H:%M:%S UTC') - ERROR: Failed to install Java" >> workflow-logs/execution.log
-          exit 1
-        fi
-        
-        # Download PlantUML with retry logic
-        echo "Downloading PlantUML..."
-        plantuml_url="https://github.com/plantuml/plantuml/releases/download/$PLANTUML_VERSION/plantuml-${PLANTUML_VERSION#v}.jar"
-        
-        attempt=1
-        while [ $attempt -le $max_attempts ]; do
-          if wget -O plantuml.jar "$plantuml_url"; then
-            echo "✓ PlantUML downloaded successfully"
-            echo "$(date -u '+%Y-%m-%d %H:%M:%S UTC') - PlantUML downloaded successfully" >> workflow-logs/execution.log
-            
-            # Verify download
-            if [ -f "plantuml.jar" ] && [ -s "plantuml.jar" ]; then
-              echo "✓ PlantUML file verified"
-              ls -lh plantuml.jar
+          echo "PlantUML not in cache, downloading..."
+          
+          # Update package list with retry
+          echo "Updating package list..."
+          max_attempts=3
+          attempt=1
+          
+          while [ $attempt -le $max_attempts ]; do
+            if sudo apt-get update; then
+              echo "✓ Package list updated successfully"
               break
             else
-              echo "::error::PlantUML file is empty or corrupted"
-              rm -f plantuml.jar
-              exit 1
+              echo "::warning::Package update failed on attempt $attempt"
+              if [ $attempt -eq $max_attempts ]; then
+                echo "::error::Failed to update package list after $max_attempts attempts"
+                exit 1
+              fi
+              sleep 5
+              attempt=$((attempt + 1))
             fi
+          done
+          
+          # Install Java Runtime Environment
+          echo "Installing Java Runtime Environment..."
+          if sudo apt-get install -y default-jre; then
+            echo "✓ Java installed successfully"
+            echo "$(date -u '+%Y-%m-%d %H:%M:%S UTC') - Java installed successfully" >> workflow-logs/execution.log
+            java -version
           else
-            echo "::warning::PlantUML download failed on attempt $attempt"
-            if [ $attempt -eq $max_attempts ]; then
-              echo "::error::Failed to download PlantUML after $max_attempts attempts"
-              exit 1
-            fi
-            sleep 5
-            attempt=$((attempt + 1))
+            echo "::error::Failed to install Java"
+            echo "$(date -u '+%Y-%m-%d %H:%M:%S UTC') - ERROR: Failed to install Java" >> workflow-logs/execution.log
+            exit 1
           fi
-        done
+          
+          # Download PlantUML with retry logic
+          echo "Downloading PlantUML..."
+          plantuml_url="https://github.com/plantuml/plantuml/releases/download/$PLANTUML_VERSION/plantuml-${PLANTUML_VERSION#v}.jar"
+          
+          attempt=1
+          while [ $attempt -le $max_attempts ]; do
+            if wget -O plantuml.jar "$plantuml_url"; then
+              echo "✓ PlantUML downloaded successfully"
+              echo "$(date -u '+%Y-%m-%d %H:%M:%S UTC') - PlantUML downloaded successfully" >> workflow-logs/execution.log
+              
+              # Verify download
+              if [ -f "plantuml.jar" ] && [ -s "plantuml.jar" ]; then
+                echo "✓ PlantUML file verified"
+                ls -lh plantuml.jar
+                break
+              else
+                echo "::error::PlantUML file is empty or corrupted"
+                rm -f plantuml.jar
+                exit 1
+              fi
+            else
+              echo "::warning::PlantUML download failed on attempt $attempt"
+              if [ $attempt -eq $max_attempts ]; then
+                echo "::error::Failed to download PlantUML after $max_attempts attempts"
+                exit 1
+              fi
+              sleep 5
+              attempt=$((attempt + 1))
+            fi
+          done
+        fi
         
         echo "::endgroup::"
         

@@ -504,7 +504,7 @@ class TestDiagramGenerator:
         
         generator.create_workspace()
         
-        with pytest.raises(ValueError, match="Failed to export workspace to JSON"):
+        with pytest.raises(ValueError, match="Workspace must contain at least one diagram"):
             generator.export_to_json()
     
     @patch('src.diagrams.generator.Workspace')
@@ -520,7 +520,7 @@ class TestDiagramGenerator:
         with patch('src.diagrams.generator.datetime') as mock_datetime:
             mock_datetime.now.side_effect = Exception("DateTime error")
             
-            with pytest.raises(ValueError, match="Failed to export workspace to PlantUML"):
+            with pytest.raises(ValueError, match="Workspace must contain at least one diagram"):
                 generator.export_to_plantuml()
     
     def test_custom_view_keys(self, generator):

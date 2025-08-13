@@ -253,6 +253,11 @@ class TestSiteGenerationPipeline:
             (templates_dir / "diagrams.html").write_text(diagrams_template)
             (templates_dir / "diagram.html").write_text(diagram_template)
             
+            # Create sample PlantUML file first
+            plantuml_content = "@startuml\nPerson(user, \"User\")\nSystem(system, \"System\")\n@enduml"
+            plantuml_file = docs_dir / "system_context.puml"
+            plantuml_file.write_text(plantuml_content)
+            
             # Create sample diagram metadata
             metadata = {
                 "metadata": {
@@ -263,7 +268,10 @@ class TestSiteGenerationPipeline:
                             "type": "system_context",
                             "lastUpdated": "2023-01-01T12:00:00",
                             "filePath": "system_context.json",
-                            "outputFiles": {"png": "system_context.png"}
+                            "outputFiles": {
+                                "png": "system_context.png",
+                                "plantuml": str(plantuml_file)
+                            }
                         },
                         {
                             "title": "Container View",
@@ -280,10 +288,6 @@ class TestSiteGenerationPipeline:
             metadata_file = docs_dir / "diagram_metadata.json"
             with open(metadata_file, 'w') as f:
                 json.dump(metadata, f)
-            
-            # Create sample PlantUML file
-            plantuml_content = "@startuml\nPerson(user, \"User\")\nSystem(system, \"System\")\n@enduml"
-            (docs_dir / "system_context.puml").write_text(plantuml_content)
             
             yield workspace
     
@@ -493,7 +497,7 @@ jobs:
         
         assert workflow_data is not None
         assert "name" in workflow_data
-        assert "on" in workflow_data
+        assert True in workflow_data or "on" in workflow_data
         assert "jobs" in workflow_data
     
     def test_workflow_structure_validation(self, temp_workspace_with_workflow):
@@ -507,10 +511,11 @@ jobs:
         # Verify basic structure
         assert workflow_data["name"] == "Render Diagrams and Deploy to GitHub Pages"
         
-        # Verify triggers
-        assert "push" in workflow_data["on"]
-        assert "pull_request" in workflow_data["on"]
-        assert "workflow_dispatch" in workflow_data["on"]
+        # Verify triggers (handle YAML 'on' key conversion)
+        triggers = workflow_data.get(True, workflow_data.get("on", {}))
+        assert "push" in triggers
+        assert "pull_request" in triggers
+        assert "workflow_dispatch" in triggers
         
         # Verify permissions
         assert "permissions" in workflow_data
