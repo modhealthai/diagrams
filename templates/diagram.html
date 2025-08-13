@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block title %}{{ diagram.title }} - Architecture Diagrams{% endblock %}
+
+{% block extra_head %}
+<style>
+    .diagram-header {
+        margin-bottom: 2rem;
+    }
+
+    .diagram-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 0.5rem;
+    }
+
+    .diagram-meta {
+        display: flex;
+        gap: 2rem;
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+        color: #64748b;
+    }
+
+    .diagram-description {
+        font-size: 1.1rem;
+        color: #475569;
+        line-height: 1.7;
+    }
+
+    .diagram-container {
+        text-align: center;
+        margin: 2rem 0;
+    }
+
+    .diagram-image {
+        max-width: 100%;
+        height: auto;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        background: #fff;
+        padding: 1rem;
+    }
+
+    .diagram-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin: 2rem 0;
+        flex-wrap: wrap;
+    }
+
+    .related-diagrams {
+        margin-top: 3rem;
+    }
+
+    .related-title {
+        font-size: 1.3rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: #1e293b;
+    }
+
+    .diagram-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .diagram-card {
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        padding: 1.5rem;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .diagram-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .diagram-card h3 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: #1e293b;
+    }
+
+    .diagram-card p {
+        color: #64748b;
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+    }
+
+    .diagram-card a {
+        color: #2563eb;
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .diagram-card a:hover {
+        text-decoration: underline;
+    }
+
+    .diagram-type-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        background: #e0e7ff;
+        color: #3730a3;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        text-transform: capitalize;
+    }
+
+    .diagram-type-badge.system-context {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .diagram-type-badge.container {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .diagram-type-badge.component {
+        background: #e0e7ff;
+        color: #3730a3;
+    }
+
+    @media (max-width: 768px) {
+        .diagram-meta {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .diagram-actions {
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .diagram-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumb %}
+<div class="breadcrumb">
+    <a href="/">Home</a> / 
+    <a href="/diagrams/">Diagrams</a> / 
+    {{ diagram.title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="diagram-header">
+    <h1 class="diagram-title">{{ diagram.title }}</h1>
+    <div class="diagram-meta">
+        <span><strong>Type:</strong> <span class="diagram-type-badge {{ diagram.diagram_type }}">{{ diagram.diagram_type.replace('_', ' ') }}</span></span>
+        <span><strong>Last Updated:</strong> {{ diagram.last_updated.strftime('%B %d, %Y at %I:%M %p') }}</span>
+        {% if diagram.file_path %}
+        <span><strong>Source:</strong> <code>{{ diagram.file_path }}</code></span>
+        {% endif %}
+    </div>
+    {% if diagram.description %}
+    <p class="diagram-description">{{ diagram.description }}</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="diagram-container">
+        {% if diagram.output_files.get('png') %}
+        <img src="{{ diagram.output_files.png }}" alt="{{ diagram.title }}" class="diagram-image">
+        {% elif diagram.output_files.get('svg') %}
+        <img src="{{ diagram.output_files.svg }}" alt="{{ diagram.title }}" class="diagram-image">
+        {% else %}
+        <div class="text-center text-muted">
+            <p>Diagram image not available</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="diagram-actions">
+        {% if diagram.output_files.get('png') %}
+        <a href="{{ diagram.output_files.png }}" class="btn" target="_blank">View PNG</a>
+        {% endif %}
+        {% if diagram.output_files.get('svg') %}
+        <a href="{{ diagram.output_files.svg }}" class="btn btn-secondary" target="_blank">View SVG</a>
+        {% endif %}
+        {% if diagram.output_files.get('plantuml') %}
+        <a href="{{ diagram.output_files.plantuml }}" class="btn btn-secondary" target="_blank">View PlantUML</a>
+        {% endif %}
+        {% if diagram.output_files.get('json') %}
+        <a href="{{ diagram.output_files.json }}" class="btn btn-secondary" target="_blank">View JSON</a>
+        {% endif %}
+    </div>
+</div>
+
+{% if related_diagrams %}
+<div class="related-diagrams">
+    <h2 class="related-title">Related Diagrams</h2>
+    <div class="diagram-grid">
+        {% for related in related_diagrams %}
+        <div class="diagram-card">
+            <h3>{{ related.title }}</h3>
+            <p>{{ related.description[:100] }}{% if related.description|length > 100 %}...{% endif %}</p>
+            <div class="mb-2">
+                <span class="diagram-type-badge {{ related.diagram_type }}">{{ related.diagram_type.replace('_', ' ') }}</span>
+            </div>
+            <a href="/diagrams/{{ related.file_path | replace('.py', '.html') }}">View Diagram →</a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if diagram.plantuml_source %}
+<div class="card mt-3">
+    <h3>PlantUML Source</h3>
+    <details>
+        <summary>Click to view source code</summary>
+        <pre style="background: #f8f9fa; padding: 1rem; border-radius: 4px; overflow-x: auto; margin-top: 1rem;"><code>{{ diagram.plantuml_source }}</code></pre>
+    </details>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Add any interactive features here
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle image loading errors
+        const diagramImage = document.querySelector('.diagram-image');
+        if (diagramImage) {
+            diagramImage.addEventListener('error', function() {
+                this.style.display = 'none';
+                const container = this.parentElement;
+                container.innerHTML = '<div class="text-center text-muted"><p>Diagram image could not be loaded</p></div>';
+            });
+        }
+    });
+</script>
+{% endblock %}

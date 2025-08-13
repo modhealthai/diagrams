@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}Architecture Diagrams - Home{% endblock %}
+
+{% block extra_head %}
+<style>
+    .hero {
+        text-align: center;
+        padding: 3rem 0;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        margin: -2rem -20px 3rem -20px;
+        border-radius: 0 0 16px 16px;
+    }
+
+    .hero h1 {
+        font-size: 3rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+    }
+
+    .hero p {
+        font-size: 1.2rem;
+        opacity: 0.9;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 2rem;
+        margin: 3rem 0;
+    }
+
+    .stat-card {
+        background: #fff;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        text-align: center;
+    }
+
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #2563eb;
+        display: block;
+    }
+
+    .stat-label {
+        color: #64748b;
+        font-weight: 500;
+        margin-top: 0.5rem;
+    }
+
+    .section-title {
+        font-size: 2rem;
+        font-weight: 600;
+        margin-bottom: 2rem;
+        color: #1e293b;
+        text-align: center;
+    }
+
+    .diagram-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 2rem;
+        margin: 2rem 0;
+    }
+
+    .diagram-preview {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        overflow: hidden;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .diagram-preview:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+
+    .diagram-preview-image {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+        background: #f8f9fa;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #64748b;
+    }
+
+    .diagram-preview-content {
+        padding: 1.5rem;
+    }
+
+    .diagram-preview h3 {
+        font-size: 1.3rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: #1e293b;
+    }
+
+    .diagram-preview p {
+        color: #64748b;
+        margin-bottom: 1rem;
+        line-height: 1.6;
+    }
+
+    .diagram-preview-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.9rem;
+        color: #64748b;
+    }
+
+    .diagram-type-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        background: #e0e7ff;
+        color: #3730a3;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        text-transform: capitalize;
+    }
+
+    .diagram-type-badge.system-context {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .diagram-type-badge.container {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .diagram-type-badge.component {
+        background: #e0e7ff;
+        color: #3730a3;
+    }
+
+    .cta-section {
+        background: #f8f9fa;
+        padding: 3rem;
+        border-radius: 12px;
+        text-align: center;
+        margin: 3rem 0;
+    }
+
+    .cta-section h2 {
+        font-size: 1.8rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: #1e293b;
+    }
+
+    .cta-section p {
+        color: #64748b;
+        margin-bottom: 2rem;
+        font-size: 1.1rem;
+    }
+
+    @media (max-width: 768px) {
+        .hero {
+            padding: 2rem 0;
+            margin: -1rem -15px 2rem -15px;
+        }
+
+        .hero h1 {
+            font-size: 2rem;
+        }
+
+        .hero p {
+            font-size: 1rem;
+        }
+
+        .stats {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .diagram-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .cta-section {
+            padding: 2rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="hero">
+    <h1>Architecture Diagrams</h1>
+    <p>Explore our system architecture through interactive diagrams generated with pystructurizr</p>
+</div>
+
+<div class="stats">
+    <div class="stat-card">
+        <span class="stat-number">{{ stats.total_diagrams or 0 }}</span>
+        <div class="stat-label">Total Diagrams</div>
+    </div>
+    <div class="stat-card">
+        <span class="stat-number">{{ stats.system_contexts or 0 }}</span>
+        <div class="stat-label">System Contexts</div>
+    </div>
+    <div class="stat-card">
+        <span class="stat-number">{{ stats.containers or 0 }}</span>
+        <div class="stat-label">Container Views</div>
+    </div>
+    <div class="stat-card">
+        <span class="stat-number">{{ stats.components or 0 }}</span>
+        <div class="stat-label">Component Views</div>
+    </div>
+</div>
+
+{% if recent_diagrams %}
+<section>
+    <h2 class="section-title">Recent Diagrams</h2>
+    <div class="diagram-grid">
+        {% for diagram in recent_diagrams %}
+        <a href="/diagrams/{{ diagram.file_path | replace('.py', '.html') }}" class="diagram-preview">
+            {% if diagram.output_files.get('png') %}
+            <img src="{{ diagram.output_files.png }}" alt="{{ diagram.title }}" class="diagram-preview-image">
+            {% else %}
+            <div class="diagram-preview-image">
+                <span>No preview available</span>
+            </div>
+            {% endif %}
+            <div class="diagram-preview-content">
+                <h3>{{ diagram.title }}</h3>
+                <p>{{ diagram.description[:120] }}{% if diagram.description|length > 120 %}...{% endif %}</p>
+                <div class="diagram-preview-meta">
+                    <span class="diagram-type-badge {{ diagram.diagram_type }}">{{ diagram.diagram_type.replace('_', ' ') }}</span>
+                    <span>{{ diagram.last_updated.strftime('%b %d, %Y') }}</span>
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{% if featured_diagrams %}
+<section>
+    <h2 class="section-title">Featured Diagrams</h2>
+    <div class="diagram-grid">
+        {% for diagram in featured_diagrams %}
+        <a href="/diagrams/{{ diagram.file_path | replace('.py', '.html') }}" class="diagram-preview">
+            {% if diagram.output_files.get('png') %}
+            <img src="{{ diagram.output_files.png }}" alt="{{ diagram.title }}" class="diagram-preview-image">
+            {% else %}
+            <div class="diagram-preview-image">
+                <span>No preview available</span>
+            </div>
+            {% endif %}
+            <div class="diagram-preview-content">
+                <h3>{{ diagram.title }}</h3>
+                <p>{{ diagram.description[:120] }}{% if diagram.description|length > 120 %}...{% endif %}</p>
+                <div class="diagram-preview-meta">
+                    <span class="diagram-type-badge {{ diagram.diagram_type }}">{{ diagram.diagram_type.replace('_', ' ') }}</span>
+                    <span>{{ diagram.last_updated.strftime('%b %d, %Y') }}</span>
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<div class="cta-section">
+    <h2>Explore All Diagrams</h2>
+    <p>Browse through all available architecture diagrams and discover the complete system design</p>
+    <a href="/diagrams/" class="btn">View All Diagrams</a>
+</div>
+{% endblock %}
