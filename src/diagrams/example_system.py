@@ -626,7 +626,7 @@ def export_diagrams(diagrams: ECommerceSystemDiagrams, output_dir: str = "docs")
         print("✓ JSON export data validation passed")
         
         # Save JSON export
-        json_file = output_path / "ecommerce_architecture.json"
+        json_file = os.path.join(output_path, "ecommerce_architecture.json")
         with open(json_file, 'w', encoding='utf-8') as f:
             f.write(json_output)
         print(f"✓ Enhanced JSON export saved to {json_file}")
@@ -638,14 +638,14 @@ def export_diagrams(diagrams: ECommerceSystemDiagrams, output_dir: str = "docs")
         diagrams.generator.validate_plantuml_output(plantuml_output)
         print("✓ PlantUML export data validation passed")
         
-        plantuml_file = output_path / "ecommerce_architecture.puml"
+        plantuml_file = os.path.join(output_path, "ecommerce_architecture.puml")
         with open(plantuml_file, 'w', encoding='utf-8') as f:
             f.write(plantuml_output)
         print(f"✓ Enhanced PlantUML export saved to {plantuml_file}")
         
         # Export enhanced metadata
         metadata = diagrams.generator.get_metadata()
-        metadata_file = output_path / "diagram_metadata.json"
+        metadata_file = os.path.join(output_path, "diagram_metadata.json")
         
         import json
         enhanced_metadata = {

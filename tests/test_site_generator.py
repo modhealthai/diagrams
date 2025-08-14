@@ -367,8 +367,8 @@ class TestSiteGenerator:
         
         generator._generate_individual_diagram_pages()
         
-        # Check template was called for each diagram
-        assert mock_env_instance.get_template.call_count == 3
+        # Check template was loaded once and rendered for each diagram
+        assert mock_env_instance.get_template.call_count == 1
         assert mock_template.render.call_count == 3
         
         # Check files were created

@@ -290,7 +290,7 @@ class TestModuleFunctions:
         mock_instance.create_component_view.assert_called_once()
         assert result == mock_instance
     
-    @patch('src.diagrams.example_system.Path')
+    @patch('pathlib.Path')
     @patch('json.dump')
     @patch('builtins.open', new_callable=mock_open)
     def test_export_diagrams_success(self, mock_file, mock_json_dump, mock_path):
@@ -307,8 +307,10 @@ class TestModuleFunctions:
         mock_diagrams.config.version = "1.0.0"
         mock_diagrams.config.author = "Test Author"
         
-        # Setup path mock
+        # Setup path mock - make it behave like a string for os.path.join
         mock_output_path = Mock()
+        mock_output_path.__str__ = Mock(return_value="test_output")
+        mock_output_path.__fspath__ = Mock(return_value="test_output")
         mock_path.return_value = mock_output_path
         mock_output_path.mkdir = Mock()
         
@@ -391,8 +393,10 @@ class TestModuleFunctions:
         mock_diagrams.config.version = "1.0.0"
         mock_diagrams.config.author = "Test Author"
         
-        # Setup path mock
+        # Setup path mock - make it behave like a string for os.path.join
         mock_output_path = Mock()
+        mock_output_path.__str__ = Mock(return_value="test_output")
+        mock_output_path.__fspath__ = Mock(return_value="test_output")
         mock_path.return_value = mock_output_path
         mock_output_path.mkdir = Mock()
         
@@ -406,13 +410,14 @@ class TestModuleFunctions:
         metadata_call = None
         for call in mock_json_dump.call_args_list:
             args, kwargs = call
-            if isinstance(args[0], dict) and "diagrams" in args[0]:
+            if isinstance(args[0], dict) and "metadata" in args[0]:
                 metadata_call = args[0]
                 break
         
         assert metadata_call is not None
-        assert "diagrams" in metadata_call
+        assert "metadata" in metadata_call
         assert "workspace" in metadata_call
-        assert "exportedAt" in metadata_call
-        assert "totalDiagrams" in metadata_call
-        assert metadata_call["totalDiagrams"] == 1
+        assert "diagrams" in metadata_call["metadata"]
+        assert "exportedAt" in metadata_call["metadata"]
+        assert "totalDiagrams" in metadata_call["metadata"]
+        assert metadata_call["metadata"]["totalDiagrams"] == 1
