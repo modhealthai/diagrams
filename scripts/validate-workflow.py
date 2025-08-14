@@ -118,7 +118,7 @@ class WorkflowValidator:
                 
                 # Try to import key modules
                 import_tests = [
-                    ('pystructurizr', 'pystructurizr'),
+                    ('pystructurizr.dsl', 'Workspace'),
                     ('src.diagrams.generator', 'DiagramGenerator'),
                     ('src.diagrams.utils', 'validate_diagram_elements')
                 ]
@@ -242,12 +242,19 @@ class WorkflowValidator:
                 workflow_data = yaml.safe_load(f)
             
             # Check required sections
-            required_sections = ['name', 'on', 'jobs']
+            # Note: YAML parser converts 'on' to True in Python
+            required_sections = ['name', 'jobs']
             for section in required_sections:
                 if section not in workflow_data:
                     self.errors.append(f"Missing section '{section}' in workflow")
                 else:
                     print(f"✓ Workflow has '{section}' section")
+            
+            # Check for 'on' section (which gets converted to True by YAML parser)
+            if True in workflow_data or 'on' in workflow_data:
+                print("✓ Workflow has 'on' section")
+            else:
+                self.errors.append("Missing section 'on' in workflow")
             
             # Check jobs structure
             if 'jobs' in workflow_data:

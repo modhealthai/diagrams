@@ -23,7 +23,7 @@ try:
     from .generator import DiagramGenerator, DiagramConfig
     from .utils import ElementFactory, RelationshipManager, ViewStyler
 except ImportError:
-    # Handle running as script
+    # Handle running as script or in different contexts
     import sys
     from pathlib import Path
     sys.path.append(str(Path(__file__).parent))
@@ -649,25 +649,27 @@ def export_diagrams(diagrams: ECommerceSystemDiagrams, output_dir: str = "docs")
         
         import json
         enhanced_metadata = {
-            "diagrams": [
-                {
-                    "title": meta.title,
-                    "description": meta.description,
-                    "type": meta.diagram_type,
-                    "lastUpdated": meta.last_updated.isoformat(),
-                    "filePath": meta.file_path,
-                    "outputFiles": meta.output_files
-                }
-                for meta in metadata
-            ],
             "workspace": {
                 "name": diagrams.config.name,
                 "description": diagrams.config.description,
                 "version": diagrams.config.version,
                 "author": diagrams.config.author
             },
-            "exportedAt": datetime.now().isoformat(),
-            "totalDiagrams": len(metadata)
+            "metadata": {
+                "diagrams": [
+                    {
+                        "title": meta.title,
+                        "description": meta.description,
+                        "type": meta.diagram_type,
+                        "lastUpdated": meta.last_updated.isoformat(),
+                        "filePath": meta.file_path,
+                        "outputFiles": meta.output_files
+                    }
+                    for meta in metadata
+                ],
+                "exportedAt": datetime.now().isoformat(),
+                "totalDiagrams": len(metadata)
+            }
         }
         
         with open(metadata_file, 'w', encoding='utf-8') as f:

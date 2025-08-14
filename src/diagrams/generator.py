@@ -19,7 +19,14 @@ import json
 from datetime import datetime
 from dataclasses import dataclass
 
-from .cache import DiagramCache, ImageOptimizer
+try:
+    from .cache import DiagramCache, ImageOptimizer
+except ImportError:
+    # Handle running as script or in different contexts
+    import sys
+    from pathlib import Path
+    sys.path.append(str(Path(__file__).parent))
+    from cache import DiagramCache, ImageOptimizer
 
 from pystructurizr.dsl import Workspace, Model, Person, SoftwareSystem, Container, Component, View
 
